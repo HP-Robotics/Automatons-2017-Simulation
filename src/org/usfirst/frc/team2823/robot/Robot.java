@@ -14,16 +14,19 @@ public class Robot extends IterativeRobot {
 	Joystick stick;
 	EncoderThread encoderThread;
 	
-	EncoderPIDSource xSource;
-	EncoderPIDSource ySource;
+	//EncoderPIDSource xSource;
+	//EncoderPIDSource ySource;
+	EncoderVectorPIDSource tSource;
 	EncoderPIDSource rSource;
 	
-	EncoderPIDOutput xOutput;
-	EncoderPIDOutput yOutput;
+	//EncoderPIDOutput xOutput;
+	//EncoderPIDOutput yOutput;
+	EncoderVectorPIDOutput tOutput;
 	EncoderPIDOutput rOutput;
 	
-	AdvancedPIDController xControl;
-	AdvancedPIDController yControl;
+	//AdvancedPIDController xControl;
+	//AdvancedPIDController yControl;
+	AdvancedPIDController tControl;
 	AdvancedPIDController rControl;
 	
 	AnalogGyro gyro;
@@ -60,17 +63,20 @@ public class Robot extends IterativeRobot {
 		encoderThread = new EncoderThread(this);
 		encoderThread.start();
 		
-		xSource = new EncoderPIDSource(encoderThread, EncoderPIDSource.Axis.X);
-		ySource = new EncoderPIDSource(encoderThread, EncoderPIDSource.Axis.Y);
+		//xSource = new EncoderPIDSource(encoderThread, EncoderPIDSource.Axis.X);
+		//ySource = new EncoderPIDSource(encoderThread, EncoderPIDSource.Axis.Y);
+		tSource = new EncoderVectorPIDSource(encoderThread, EncoderVectorPIDSource.Axis.T, encoderThread.getR());
 		rSource = new EncoderPIDSource(encoderThread, EncoderPIDSource.Axis.R);
 		
-		xOutput = new EncoderPIDOutput(this, EncoderPIDOutput.Axis.X);
-		yOutput = new EncoderPIDOutput(this, EncoderPIDOutput.Axis.Y);
+		//xOutput = new EncoderPIDOutput(this, EncoderPIDOutput.Axis.X);
+		//yOutput = new EncoderPIDOutput(this, EncoderPIDOutput.Axis.Y);
+		tOutput = new EncoderVectorPIDOutput(this, EncoderVectorPIDOutput.Axis.T, encoderThread.getR());
 		rOutput = new EncoderPIDOutput(this, EncoderPIDOutput.Axis.R);
 		
 		//old 0.0045, 0.000001, 0.35
-		xControl = new AdvancedPIDController(0.004, 0.000001, 0.4, xSource, xOutput, 0.01);
-		yControl = new AdvancedPIDController(0.004, 0.000001, 0.4, ySource, yOutput, 0.01);
+		//xControl = new AdvancedPIDController(0.004, 0.000001, 0.4, xSource, xOutput, 0.01);
+		//yControl = new AdvancedPIDController(0.004, 0.000001, 0.4, ySource, yOutput, 0.01);
+		tControl = new AdvancedPIDController(0.004, 0.000001, 0.4, tSource, tOutput, 0.01);
 		rControl = new AdvancedPIDController(0.002, 0.000001, 0.5, rSource, rOutput, 0.01);
 		
 		gyro = new AnalogGyro(0);
@@ -94,10 +100,13 @@ public class Robot extends IterativeRobot {
 		//xControl.setSetpoint(5000 * -27);
 		//yControl.setSetpoint(5000 * -27);
 		//rControl.setSetpoint(3.14 * -27);
-		rControl.setSetpoint(0);
 		
-		xControl.enable();
-		yControl.enable();
+		driveTo(5000, 2536);
+		rControl.setSetpoint(3.14 * -27);
+		
+		//xControl.enable();
+		//yControl.enable();
+		tControl.enable();
 		rControl.enable();
 	}
 
@@ -113,15 +122,15 @@ public class Robot extends IterativeRobot {
 		
 		//update parametric PID setpoints
 		//double xPoint = 1000 - Math.pow(20 * (Timer.getFPGATimestamp() - initTime) - Math.sqrt(1000), 2);
-		double xPoint = 2500 / (1 + Math.pow(Math.E, -2 * ((Timer.getFPGATimestamp() - initTime) - 2.5)));
-		double yPoint = (10000 / 5) * (Timer.getFPGATimestamp() - initTime);
+		//double xPoint = 2500 / (1 + Math.pow(Math.E, -2 * ((Timer.getFPGATimestamp() - initTime) - 2.5)));
+		//double yPoint = (10000 / 5) * (Timer.getFPGATimestamp() - initTime);
 		
-		xControl.setSetpoint(xPoint * -27);
-		yControl.setSetpoint(yPoint * -27);
+		//xControl.setSetpoint(xPoint * -27);
+		//yControl.setSetpoint(yPoint * -27);
 		
-		if(yPoint > 10000) {
-			yControl.setSetpoint(10000 * -27);
-		}
+		//if(yPoint > 10000) {
+		//	yControl.setSetpoint(10000 * -27);
+		//}
 		
 		/*if(xPoint < 0) {
 			xControl.setSetpoint(0);
@@ -129,7 +138,7 @@ public class Robot extends IterativeRobot {
 		
 		//System.out.println(t);
 		//System.out.println(driveR + " " + encoderThread.getR());
-		//System.out.println(encoderThread.getX() + " " + encoderThread.getY() + " | " + encoderThread.getR());
+		System.out.println(encoderThread.getX() + " " + encoderThread.getY() + " | " + encoderThread.getR());
 
 		//apply drive values to drive the robot
 		//robotDrive.mecanumDrive_Cartesian(stick.getX(), stick.getY(), stick.getZ(), -t);
@@ -148,11 +157,25 @@ public class Robot extends IterativeRobot {
 	
 	@Override
 	public void disabledInit() {
-		xControl.disable();
-		yControl.disable();
+		//xControl.disable();
+		//yControl.disable();
+		tControl.disable();
 		rControl.disable();
 		
 		robotDrive.mecanumDrive_Cartesian(0, 0, 0, 0);
+	}
+	
+	//PID along a straight line to the given x and y values
+	public void driveTo(double x, double y) {
+		double dx = x - encoderThread.getX();
+		double dy = y - encoderThread.getY();
+		
+		double dp = Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2));
+		double t = Math.atan(dx / dy);
+		
+		tSource.setDirection(t);
+		tOutput.setDirection(t);
+		tControl.setSetpoint(dp * -27);
 	}
 	
 	public void setDriveX(double x) {
