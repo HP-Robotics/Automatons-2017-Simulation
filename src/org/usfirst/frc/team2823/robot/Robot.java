@@ -7,11 +7,13 @@ import edu.wpi.first.wpilibj.RobotDrive;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.RobotDrive.MotorType;
 
-
 public class Robot extends IterativeRobot {
 	//declare objects
-	RobotDrive robotDrive;
 	Joystick stick;
+	
+	Button xButton;
+	
+	RobotDrive robotDrive;
 	EncoderThread encoderThread;
 	
 	EncoderPIDSource xSource;
@@ -32,7 +34,7 @@ public class Robot extends IterativeRobot {
 	AnalogGyro gyro;
 	
 	//declare constants
-	//wheel PWM channels
+	//simulator wheel PWM channels
 	final int kFrontLeftChannel = 0;
 	final int kFrontRightChannel = 1;
 	final int kRearLeftChannel = 2;
@@ -56,6 +58,8 @@ public class Robot extends IterativeRobot {
 	public void robotInit() {
 		
 		stick = new Joystick(kJoystickChannel);
+		
+		xButton = new Button();
 		
 		robotDrive = new RobotDrive(kFrontLeftChannel, kRearLeftChannel, kFrontRightChannel, kRearRightChannel);
 		robotDrive.setExpiration(0.1);
@@ -99,19 +103,22 @@ public class Robot extends IterativeRobot {
 		
 		//xControl.setSetpoint(5000 * -27);
 		//yControl.setSetpoint(5000 * -27);
-		rControl.setSetpoint(3.14 * 2 * 10 * -27);
+		rControl.setSetpoint(3.14 * -27);
 		
 		//driveTo(5000, 2500);
 		//rControl.setSetpoint(0);
 		
-		xControl.enable();
-		yControl.enable();
+		//xControl.enable();
+		//yControl.enable();
 		//tControl.enable();
-		rControl.enable();
+		//rControl.enable();
 	}
 
 	@Override
 	public void teleopPeriodic() {
+		//update buttons
+		xButton.update(stick.getRawButton(1));
+		
 		//prevent joysticks from driving robot when within a threshold value of zero
 		double x = Math.abs(stick.getX()) < kStickThreshold ? 0.0 : stick.getX();
 		double y = Math.abs(stick.getY()) < kStickThreshold ? 0.0 : stick.getY();
@@ -122,15 +129,29 @@ public class Robot extends IterativeRobot {
 		
 		//update parametric PID setpoints
 		//double xPoint = 1000 - Math.pow(20 * (Timer.getFPGATimestamp() - initTime) - Math.sqrt(1000), 2);
-		double xPoint = 2500 / (1 + Math.pow(Math.E, -2 * ((Timer.getFPGATimestamp() - initTime) - 2.5)));
-		double yPoint = (10000 / 5) * (Timer.getFPGATimestamp() - initTime);
+		//double xPoint = 2500 / (1 + Math.pow(Math.E, -2 * ((Timer.getFPGATimestamp() - initTime) - 2.5)));
+		//double yPoint = (10000 / 5) * (Timer.getFPGATimestamp() - initTime);
 		
-		xControl.setSetpoint(xPoint * -27);
-		yControl.setSetpoint(yPoint * -27);
+		//double xPoint = 1000 * Math.sin(0.5 * (Timer.getFPGATimestamp() - initTime));
+		//double yPoint = 1000 * Math.cos(0.5 * (Timer.getFPGATimestamp() - initTime));
 		
-		if(yPoint > 10000) {
-			yControl.setSetpoint(10000 * -27);
+		//xControl.setSetpoint(xPoint * -27);
+		//yControl.setSetpoint(yPoint * -27);
+		
+		if(xButton.changed()) {
+			if(xButton.on()) {
+				xControl.setSetpoint(1000 * -27);
+				xControl.enableLog("zanzibar_spumoni.csv");
+				xControl.enable();
+			} else {
+				xControl.disable();
+				xControl.closeLog();
+			}
 		}
+		
+		//if(yPoint > 10000) {
+		//	yControl.setSetpoint(10000 * -27);
+		//}
 		
 		/*if(xPoint < 0) {
 			xControl.setSetpoint(0);
@@ -138,7 +159,7 @@ public class Robot extends IterativeRobot {
 		
 		//System.out.println(t);
 		//System.out.println(driveR + " " + encoderThread.getR());
-		System.out.println(encoderThread.getX() + " " + encoderThread.getY() + " | " + encoderThread.getR());
+		//System.out.println(encoderThread.getX() + " " + encoderThread.getY() + " | " + encoderThread.getR());
 
 		//apply drive values to drive the robot
 		//robotDrive.mecanumDrive_Cartesian(stick.getX(), stick.getY(), stick.getZ(), -t);
@@ -157,8 +178,8 @@ public class Robot extends IterativeRobot {
 	
 	@Override
 	public void disabledInit() {
-		//xControl.disable();
-		//yControl.disable();
+		xControl.disable();
+		yControl.disable();
 		tControl.disable();
 		rControl.disable();
 		

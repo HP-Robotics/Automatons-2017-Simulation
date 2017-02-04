@@ -1,6 +1,6 @@
 package org.usfirst.frc.team2823.robot;
 
-public class Toggle {
+public class Button {
 	private boolean s = false;
 	private boolean ls = false;
 	private boolean c = false;
